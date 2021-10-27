@@ -1,4 +1,5 @@
 #include "Graphics.h"
+
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
 
@@ -37,6 +38,27 @@ Graphics::Graphics(HWND hWnd)
 		nullptr,
 		nullptr,
 		(IDXGISwapChain1**)pSwap.GetAddressOf());
+
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	heapDesc.NodeMask = 0;
+	heapDesc.NumDescriptors = 2;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	
+	hr = pDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(rtvHeaps.GetAddressOf()));
+	DXGI_SWAP_CHAIN_DESC swcDesc = {};
+	hr = pSwap->GetDesc(&swcDesc);
+	
+	D3D12_CPU_DESCRIPTOR_HANDLE handle = rtvHeaps->GetCPUDescriptorHandleForHeapStart();
+	backBuffers = std::vector<ComPtr<ID3D12Resource>>(swcDesc.BufferCount);
+	for (UINT i = 0; i < swcDesc.BufferCount; ++i) 
+	{
+		hr = pSwap->GetBuffer(i, IID_PPV_ARGS(backBuffers[i].GetAddressOf()));
+		pDevice->CreateRenderTargetView(backBuffers[i].Get(), nullptr, handle);
+		handle.ptr += pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	}
+
+	hr = pDevice->CreateFence(m_fenceVal, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_fence.GetAddressOf()));
 }
 
 Graphics::~Graphics()
@@ -45,5 +67,43 @@ Graphics::~Graphics()
 
 void Graphics::EndFrame()
 {
+	auto bbIdx = pSwap->GetCurrentBackBufferIndex();
+
+	D3D12_RESOURCE_BARRIER BarrierDesc = {};
+	BarrierDesc.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	BarrierDesc.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	BarrierDesc.Transition.pResource = backBuffers[bbIdx].Get();
+	BarrierDesc.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	pCmdList->ResourceBarrier(1, &BarrierDesc);
+
+	auto rtvH = rtvHeaps->GetCPUDescriptorHandleForHeapStart();
+	rtvH.ptr += static_cast<ULONG_PTR>((ULONGLONG)bbIdx * pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+	pCmdList->OMSetRenderTargets(1, &rtvH, false, nullptr);
+
+	float clearColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+	pCmdList->ClearRenderTargetView(rtvH, clearColor, 0, nullptr);
+
+	BarrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+	BarrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+	pCmdList->ResourceBarrier(1, &BarrierDesc);
+
+	pCmdList->Close();
+
+	ID3D12CommandList* cmdlists[] = { pCmdList.Get() };
+	pCmdQueue->ExecuteCommandLists(1, cmdlists);
+
+	pCmdQueue->Signal(m_fence.Get(), ++m_fenceVal);
+
+	if (m_fence->GetCompletedValue() != m_fenceVal) 
+	{
+		auto event = CreateEvent(nullptr, false, false, nullptr);
+		m_fence->SetEventOnCompletion(m_fenceVal, event);
+		WaitForSingleObject(event, INFINITE);
+		CloseHandle(event);
+	}
+	pCmdAllocator->Reset();
+	pCmdList->Reset(pCmdAllocator.Get(), nullptr);
 	pSwap->Present(1u, 0u);
 }
