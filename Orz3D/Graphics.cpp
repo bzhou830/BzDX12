@@ -61,10 +61,6 @@ Graphics::Graphics(HWND hWnd)
 	hr = pDevice->CreateFence(m_fenceVal, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_fence.GetAddressOf()));
 }
 
-Graphics::~Graphics()
-{
-}
-
 void Graphics::EndFrame()
 {
 	auto bbIdx = pSwap->GetCurrentBackBufferIndex();
