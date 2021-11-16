@@ -32,7 +32,7 @@ Window::WindowClass::~WindowClass()
 }
 
 
-const char* Window::WindowClass::GetName() noexcept
+const wchar_t* Window::WindowClass::GetName() noexcept
 {
     return wndClassName;
 }
@@ -44,7 +44,7 @@ HINSTANCE Window::WindowClass::GetInstance() noexcept
 }
 
 
-Window::Window(int width, int height, const char* name):
+Window::Window(int width, int height, const wchar_t* name):
 	width(width), 
 	height(height)
 {
@@ -253,7 +253,7 @@ std::string Window::Exception::TranslateErrorCode(HRESULT hr) noexcept
 		FORMAT_MESSAGE_ALLOCATE_BUFFER |
 		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 		nullptr, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		reinterpret_cast<LPSTR>(&pMsgBuf), 0, nullptr
+		reinterpret_cast<LPWSTR>(&pMsgBuf), 0, nullptr
 	);
 	// 0 string length returned indicates a failure
 	if (nMsgLen == 0)

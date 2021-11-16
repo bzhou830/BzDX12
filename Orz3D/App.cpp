@@ -1,10 +1,10 @@
 #include "App.h"
 
-App::App() : wnd(800, 600, "app")
+App::App() : wnd(800, 600, L"app")
 { }
 
 
-App::App(int width, int height, const char* name) 
+App::App(int width, int height, const wchar_t* name) 
 	: wnd(width, height, name)
 { }
 

@@ -1,4 +1,5 @@
 #include "Graphics.h"
+#include <string>
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
@@ -7,6 +8,8 @@ Graphics::Graphics(HWND hWnd)
 {
 	HRESULT hr = S_OK;
 	hr = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(pDxgiFactory.GetAddressOf()));
+	LogAdapters();
+	
 	hr = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_1, IID_PPV_ARGS(pDevice.GetAddressOf()));
 	hr = pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(pCmdAllocator.GetAddressOf()));
 	hr = pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, pCmdAllocator.Get(), nullptr, IID_PPV_ARGS(pCmdList.GetAddressOf()));
@@ -102,4 +105,74 @@ void Graphics::EndFrame()
 	pCmdAllocator->Reset();
 	pCmdList->Reset(pCmdAllocator.Get(), nullptr);
 	pSwap->Present(1u, 0u);
+}
+
+void Graphics::LogAdapters()
+{
+	UINT i = 0;
+	ComPtr<IDXGIAdapter> adapter = nullptr;
+	std::vector<ComPtr<IDXGIAdapter>> adapterList;
+	while (pDxgiFactory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
+	{
+		DXGI_ADAPTER_DESC desc;
+		adapter->GetDesc(&desc);
+
+		std::wstring text = L"***Adapter: ";
+		text += desc.Description;
+		text += L"\n";
+		OutputDebugString((text.c_str()));
+		adapterList.push_back(adapter);
+		++i;
+	}
+
+	for (size_t i = 0; i < adapterList.size(); ++i)
+	{
+		LogAdapterOutputs(adapterList[i]);
+	}
+}
+
+void Graphics::LogAdapterOutputs(ComPtr<IDXGIAdapter> adapter)
+{
+	UINT i = 0;
+	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	ComPtr<IDXGIOutput> output = nullptr;
+	while (adapter->EnumOutputs(i, output.GetAddressOf()) != DXGI_ERROR_NOT_FOUND)
+	{
+		DXGI_OUTPUT_DESC desc;
+		output->GetDesc(&desc);
+
+		std::wstring text = L"***Output: ";
+		text += desc.DeviceName;
+		text += L"\n";
+		OutputDebugString(text.c_str());
+
+		LogOutputDisplayModes(output, mBackBufferFormat);
+		++i;
+	}
+}
+
+
+void Graphics::LogOutputDisplayModes(ComPtr<IDXGIOutput> output, DXGI_FORMAT format)
+{
+	UINT count = 0;
+	UINT flags = 0;
+
+	// Call with nullptr to get list count.
+	output->GetDisplayModeList(format, flags, &count, nullptr);
+
+	std::vector<DXGI_MODE_DESC> modeList(count);
+	output->GetDisplayModeList(format, flags, &count, &modeList[0]);
+
+	for (auto& x : modeList)
+	{
+		UINT n = x.RefreshRate.Numerator;
+		UINT d = x.RefreshRate.Denominator;
+		std::wstring text =
+			L"Width = " + std::to_wstring(x.Width) + L" " +
+			L"Height = " + std::to_wstring(x.Height) + L" " +
+			L"Refresh = " + std::to_wstring(n) + L"/" + std::to_wstring(d) +
+			L"\n";
+
+		OutputDebugString(text.c_str());
+	}
 }

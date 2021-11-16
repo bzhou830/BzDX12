@@ -1,5 +1,6 @@
 #include "BzException.h"
 #include "sstream"
+#include "windows.h"
 
 
 BzException::BzException(int line, const char* file) noexcept

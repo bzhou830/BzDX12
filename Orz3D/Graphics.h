@@ -15,6 +15,9 @@ public:
 	Graphics& operator=(const Graphics&) = delete;
 	~Graphics() {};
 	void EndFrame();
+    void LogAdapters();
+    void LogAdapterOutputs(ComPtr<IDXGIAdapter> adapter);
+	void LogOutputDisplayModes(ComPtr<IDXGIOutput> output, DXGI_FORMAT format);
 private:
 	ComPtr<IDXGIFactory6> pDxgiFactory;
 	ComPtr<ID3D12Device> pDevice;

@@ -25,19 +25,19 @@ private:
     class WindowClass
     {
     public:
-        static const char* GetName() noexcept;
+        static const wchar_t* GetName() noexcept;
         static HINSTANCE GetInstance() noexcept;
     private:
         WindowClass() noexcept;
         ~WindowClass();
         WindowClass(const WindowClass&) = delete;
         WindowClass& operator=(const WindowClass&) = delete;
-        static constexpr const char* wndClassName = "Orz3D Engine Window";
+        static constexpr const wchar_t* wndClassName = L"Orz3D Engine Window";
         static WindowClass wndClass;
         HINSTANCE hInst;
     };
 public:
-    Window(int width, int height, const char* name);
+    Window(int width, int height, const wchar_t* name);
     ~Window();
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;
